@@ -25,8 +25,9 @@ char file_name[]={"work.txt"};
 char copy_buff[1000];
 int capacity;
 FILE *in, *out;
-int ii=0;
+int now=0;
 int cap=0;
+int ii=0;
 
 // Функция обработки прерывания
 void HandleInterruption();
@@ -58,9 +59,6 @@ int main()
     in=fopen(file_name, "r");
     CheckFile(in);
 
-    out=fopen("copy", "w");
-    CheckFile(out);
-
     while (fscanf(in, "%c", &file_buff[cap])==1)
     {
         cap++;
@@ -68,7 +66,7 @@ int main()
 
     sigprocmask(0, 0, &cpnew.sa_mask);
     sigaction(SIGINT, &cpnew, 0);
-    sigsetjmp(buffer, 1);
+    //sigsetjmp(buffer, 1);
 
     if (pipe(fd) == -1)
     {
@@ -86,29 +84,56 @@ int main()
             printf("Процесс-сын\n");
             close(fd[0]);
             dup2(fd[1],1); // Дублирование на фд
-
             for(i=0; i<cap; ++i)
             {
                 printf("%c", file_buff[i]);
             }
-            close(1);
+
         default:
             wait(NULL);
-
+            //sigsetjmp(buffer, 1);
             printf("Процесс-родитель\n");
             capacity=read(fd[0], copy_buff, cap);
+            out=fopen("copy", "w");
+            CheckFile(out);
             printf("Начинаю копирование. Можно прерывать.");
+            //sigsetjmp(buffer, 1);
+            sleep(1);
             for(i=0; i<capacity; ++i)
             {
+                now++;
                 fprintf(out, "%c", copy_buff[i]);
                 printf("%c", copy_buff[i]);
-            }
-            //sigsetjmp(buffer, 1);
-            //execl("/bin/cmp", "cmp","-s", file_name, "copy", NULL);
-            //remove(file_name);
+                if (copy_buff[i]=='\n')
+                {
+                    sleep(1);
+                    sigsetjmp(buffer, 1);
+                }
 
+            }
+            sleep(1);
+            int status;
+            if (ii >= 1)
+               execl("/bin/cmp", "cmp","-s", file_name, "copy-1", ">", status, NULL);
+            else
+                execl("/bin/cmp", "cmp","-s", file_name, "copy", ">", status, NULL);
+            switch (status)
+            {
+                case 0:
+                    printf("Файлы одинаковые, удаляю исходный.\n");
+                    remove(file_name);
+                    break;
+                case 1:
+                    printf("Файлы различны!\n");
+                    break;
+                case 2:
+                    printf("Ошибка!\n");
+                    break;
+                case -1:
+                    printf("Ошибка execl!\n");
+                    break;
+            }
     }
-    sigsetjmp(buffer, 1);
     printf("end.\n");
     return 0;
 }
@@ -116,16 +141,19 @@ int main()
 void HandleInterruption()
 {
     printf("Прерывание!\n");
+
     ii++;
     if (ii==1)
     {
-        printf("Переименование копии в исходный файл:\n");
-        rename("copy", file_name);
-        char ch;
-        while (fscanf(out, "%c", &ch)==1)
+        printf("Переименование копии в исходный файл:\n\n");
+        rename("copy", "copy-1");
+        int i;
+        for(i=0; i<now; ++i)
         {
-            printf("%c", ch);
+            printf("%c", copy_buff[i]);
         }
+        printf("\nКонец записи!\n");
+
     }
     siglongjmp(buffer, 1);
 }
