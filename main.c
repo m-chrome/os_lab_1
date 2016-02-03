@@ -94,7 +94,7 @@ int main()
             //sigsetjmp(buffer, 1);
             printf("Процесс-родитель\n");
             capacity=read(fd[0], copy_buff, cap);
-            out=fopen("copy", "w");
+            out=fopen("copy/copy", "w");
             CheckFile(out);
             printf("Начинаю копирование. Можно прерывать.");
             //sigsetjmp(buffer, 1);
@@ -114,7 +114,7 @@ int main()
             sleep(1);
             int status;
             if (ii >= 1)
-               execl("/bin/cmp", "cmp","-s", file_name, "copy-1", ">", status, NULL);
+               execl("/bin/cmp", "cmp","-s", file_name, "copy-1", "> ", status, NULL);
             else
                 execl("/bin/cmp", "cmp","-s", file_name, "copy", ">", status, NULL);
             switch (status)
@@ -146,7 +146,10 @@ void HandleInterruption()
     if (ii==1)
     {
         printf("Переименование копии в исходный файл:\n\n");
-        rename("copy", "copy-1");
+        char copy[]="copy/";
+        char *new_name=strcat(copy, file_name);
+        printf("%s\n", new_name);
+        rename("copy/copy", new_name);
         int i;
         for(i=0; i<now; ++i)
         {
