@@ -3,7 +3,7 @@
  *
  * Написать программу, осуществляющую   копирование   введенного по
  * запросу файла. Информацию переслать через межпроцессный канал в параллельный
- * процесс-потомок, где проверить, нет ли различий между исходным файлом и его
+ * процесс, где проверить, нет ли различий между исходным файлом и его
  * копией, и исходный файл удалить, если нет различий. Предусмотреть возможность
  * неоднократного прерывания по сигналу <CTRL>+<C>. При поступлении 1-го
  * прерывания переименовать файл в исходный и распечатать его содержимое.
@@ -14,7 +14,7 @@
 #include <setjmp.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include <string.h>
+//#include <string.h>
 #include <wait.h>
 
 sigjmp_buf buffer; // область памяти для запоминания состояния процесса
@@ -23,7 +23,7 @@ sigjmp_buf buffer; // область памяти для запоминания 
 int in;                                 // Дескриптор
 static int file_cap=0;                  // Ёмкость файла
 char file_buff[10000];                  // Буфер под файл
-char file_name[1000]="work.txt";        // Имя файла
+char file_name[1000];        // Имя файла
 
 // Файл - копия
 int out;                    // Дескриптор
@@ -72,9 +72,12 @@ int main()
     sigaction(SIGINT, &cpnew, 0);
     sigsetjmp(buffer, 1);
 
+
     //write(1, "Введите имя файла для копирования: ", 35)
+    sigsetjmp(buffer, 1);
     printf("Введите имя файла для копирования: ");
-    //scanf("%s", file_name);
+
+    scanf("%s", file_name);
     printf("Открываем файл %s\n", file_name);
 
     fd[1]=open(file_name, 0);
@@ -84,7 +87,7 @@ int main()
         //printf("%c", file_buff[cap]);
         file_cap++;
     }
-    sigsetjmp(buffer, 1);
+
     if (pipe(fd) == -1)
     {
         printf("Ошибка создания межпроцессного канала!");
@@ -115,7 +118,6 @@ int main()
             for(i=0; i<copy_cap; ++i)
             {
                 now++;
-                //fprintf(out, "%c", copy_buff[i]);
                 write(fd[0], &copy_buff[i], 1);
                 printf("%c", copy_buff[i]);
                 if (copy_buff[i]=='\n')
@@ -145,7 +147,8 @@ int main()
             {
                 case 0:
                     printf("Файлы одинаковые, удаляю исходный.\n");
-                    //remove(file_name);
+                    remove(file_name);
+                    //execl("/bin/rm", "rm", file_name, NULL);
                     break;
                 case 1:
                     printf("Файлы различны!\n");
@@ -159,4 +162,3 @@ int main()
     printf("End.\n");
     return 0;
 }
-
